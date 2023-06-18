@@ -36,29 +36,33 @@ import fs from 'fs';
 
   // Root Endpoint
   // Displays a simple message to the user
-  app.get("/", async (req, res) => {
+  app.get("/", async (_req, res) => {
     res.send("try GET /filteredimage?image_url={{}}")
   });
 
   app.get('/filteredimage', async (req, res) => {
-    const imageUrl = req.query.image_url;
+    const imageUrl: string = req.query.image_url as string;
 
     if (!isHttpUri(imageUrl) && !isHttpsUri(imageUrl)) {
       res.status(400);
       res.send({ "code": 400, "message": "Invalid image_url" });
     }
-    let filePath: string = null;
-    try {
-      filePath = await filterImageFromURL(imageUrl);
-      if (filePath) {
-        res.sendFile(filePath);
-      }
-    } catch (error) {
-      res.status(400);
-      res.send({ "code": 400, "message": "Proccessing image_url has errors" });
-    } finally {
-      fs.unlinkSync(filePath);
-    }
+
+    filterImageFromURL(imageUrl)
+      .then((filePath) => {
+        if (filePath) {
+          res.sendFile(filePath, (err) => {
+            if (err) {
+              res.send({ "code": 400, "message": err.message });
+            }
+            deleteLocalFiles([filePath]);
+          })
+        }
+      }).catch((err) => {
+        res.status(400);
+        res.send({ "code": 400, "message": err.message });
+      })
+
   });
 
 
